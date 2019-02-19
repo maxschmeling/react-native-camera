@@ -45,6 +45,8 @@
 @property (assign, nonatomic) AVCaptureVideoStabilizationMode videoStabilizationMode;
 @property(assign, nonatomic, nullable) NSNumber *defaultVideoQuality;
 @property(assign, nonatomic) BOOL defaultMuted;
+@property(assign, nonatomic, nullable) NSNumber *deviceOrientation;
+@property(assign, nonatomic, nullable) NSNumber *orientation;
 
 - (id)initWithBridge:(RCTBridge *)bridge;
 - (void)updateType;
@@ -74,6 +76,7 @@
 - (void)onFacesDetected:(NSDictionary *)event;
 - (void)onPictureSaved:(NSDictionary *)event;
 - (void)onText:(NSDictionary *)event;
+- (bool)isRecording;
 
 @end
 
