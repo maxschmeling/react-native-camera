@@ -613,7 +613,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         }
 
         // Default video quality AVCaptureSessionPresetHigh if non is provided
-        AVCaptureSessionPreset preset = ([self defaultVideoQuality]) ? [RNCameraUtils captureSessionPresetForVideoResolution:[self defaultVideoQuality]] : AVCaptureSessionPresetHigh;
+        AVCaptureSessionPreset preset = ([self defaultVideoQuality]) ? [RNCameraUtils captureSessionPresetForVideoResolution:[[self defaultVideoQuality] integerValue]] : AVCaptureSessionPresetHigh;
 
         self.session.sessionPreset = preset;
 
@@ -1023,7 +1023,7 @@ static NSDictionary *defaultFaceDetectorOptions = nil;
         [self setupOrDisableTextDetector];
     }
 
-    AVCaptureSessionPreset preset = ([self defaultVideoQuality]) ? [RNCameraUtils captureSessionPresetForVideoResolution:[self defaultVideoQuality]] : AVCaptureSessionPresetHigh;
+    AVCaptureSessionPreset preset = ([self defaultVideoQuality]) ? [RNCameraUtils captureSessionPresetForVideoResolution:[[self defaultVideoQuality] integerValue]] : AVCaptureSessionPresetHigh;
     if (self.session.sessionPreset != preset) {
         [self updateSessionPreset:preset];
     }
