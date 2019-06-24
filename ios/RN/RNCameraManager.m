@@ -16,6 +16,7 @@ RCT_EXPORT_VIEW_PROPERTY(onCameraReady, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onMountError, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onBarCodeRead, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onFacesDetected, RCTDirectEventBlock);
+RCT_EXPORT_VIEW_PROPERTY(onGoogleVisionBarcodesDetected, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onPictureSaved, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onTextRecognized, RCTDirectEventBlock);
 
@@ -68,13 +69,16 @@ RCT_EXPORT_VIEW_PROPERTY(onTextRecognized, RCTDirectEventBlock);
              @"VideoCodec": [[self class] validCodecTypes],
              @"BarCodeType" : [[self class] validBarCodeTypes],
              @"FaceDetection" : [[self class] faceDetectorConstants],
-             @"VideoStabilization": [[self class] validVideoStabilizationModes]
+             @"VideoStabilization": [[self class] validVideoStabilizationModes],
+             @"GoogleVisionBarcodeDetection": @{
+                 @"BarcodeType": [[self class] barcodeDetectorConstants],
+             }
              };
 }
 
 - (NSArray<NSString *> *)supportedEvents
 {
-    return @[@"onCameraReady", @"onMountError", @"onBarCodeRead", @"onFacesDetected", @"onPictureSaved", @"onTextRecognized"];
+    return @[@"onCameraReady", @"onMountError", @"onBarCodeRead", @"onFacesDetected", @"onPictureSaved", @"onTextRecognized", @"onGoogleVisionBarcodesDetected"];
 }
 
 + (NSDictionary *)validCodecTypes
@@ -142,12 +146,17 @@ RCT_EXPORT_VIEW_PROPERTY(onTextRecognized, RCTDirectEventBlock);
 
 + (NSDictionary *)faceDetectorConstants
 {
-#if __has_include(<GoogleMobileVision/GoogleMobileVision.h>)
-#if __has_include("RNFaceDetectorManager.h")
-    return [RNFaceDetectorManager constants];
+#if __has_include(<FirebaseMLVision/FirebaseMLVision.h>)
+    return [FaceDetectorManagerMlkit constants];
 #else
-    return [RNFaceDetectorManagerStub constants];
+    return [NSDictionary new];
 #endif
+}
+
++ (NSDictionary *)barcodeDetectorConstants
+{
+#if __has_include(<FirebaseMLVision/FirebaseMLVision.h>)
+    return [BarcodeDetectorManagerMlkit constants];
 #else
     return [NSDictionary new];
 #endif
@@ -206,8 +215,13 @@ RCT_CUSTOM_VIEW_PROPERTY(pictureSize, NSString *, RNCamera)
 
 RCT_CUSTOM_VIEW_PROPERTY(faceDetectorEnabled, BOOL, RNCamera)
 {
-    view.isDetectingFaces = [RCTConvert BOOL:json];
-    [view updateFaceDetecting:json];
+    view.canDetectFaces = [RCTConvert BOOL:json];
+    [view setupOrDisableFaceDetector];
+}
+
+RCT_CUSTOM_VIEW_PROPERTY(trackingEnabled, BOOL, RNCamera)
+{
+    [view updateTrackingEnabled:json];
 }
 
 RCT_CUSTOM_VIEW_PROPERTY(faceDetectionMode, NSInteger, RNCamera)
@@ -235,6 +249,17 @@ RCT_CUSTOM_VIEW_PROPERTY(barCodeScannerEnabled, BOOL, RNCamera)
 RCT_CUSTOM_VIEW_PROPERTY(barCodeTypes, NSArray, RNCamera)
 {
     [view setBarCodeTypes:[RCTConvert NSArray:json]];
+}
+
+RCT_CUSTOM_VIEW_PROPERTY(googleVisionBarcodeType, NSString, RNCamera)
+{
+    [view updateGoogleVisionBarcodeType:json];
+}
+
+RCT_CUSTOM_VIEW_PROPERTY(googleVisionBarcodeDetectorEnabled, BOOL, RNCamera)
+{
+    view.canDetectBarcodes = [RCTConvert BOOL:json];
+    [view setupOrDisableBarcodeDetector];
 }
 
 RCT_CUSTOM_VIEW_PROPERTY(textRecognizerEnabled, BOOL, RNCamera)
@@ -391,16 +416,19 @@ RCT_EXPORT_METHOD(checkVideoAuthorizationStatus:(RCTPromiseResolveBlock)resolve
 
 RCT_EXPORT_METHOD(checkRecordAudioAuthorizationStatus:(RCTPromiseResolveBlock)resolve
                   reject:(__unused RCTPromiseRejectBlock)reject) {
-#ifdef DEBUG
     if ([[NSBundle mainBundle].infoDictionary objectForKey:@"NSMicrophoneUsageDescription"] == nil) {
         RCTLogWarn(@"Checking audio permissions without having key 'NSMicrophoneUsageDescription' defined in your Info.plist. Audio Recording for your video files is therefore disabled. If you do not need audio on your recordings is is recommended to set the 'captureAudio' property on your component instance to 'false', otherwise you will have to add the key 'NSMicrophoneUsageDescription' to your Info.plist. If you do not your app will crash when being built in release mode. You can learn more about adding permissions here: https://stackoverflow.com/a/38498347/4202031");
         resolve(@(NO));
         return;
-    }
+    } else {
+#ifdef DEBUG
+        [[AVAudioSession sharedInstance] requestRecordPermission:^(BOOL granted) {
+            resolve(@(granted));
+        }];
+#else
+        resolve(@(YES));
 #endif
-    [[AVAudioSession sharedInstance] requestRecordPermission:^(BOOL granted) {
-        resolve(@(granted));
-    }];
+    }
 }
 
 RCT_REMAP_METHOD(getAvailablePictureSizes,
